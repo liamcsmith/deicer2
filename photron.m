@@ -24,7 +24,7 @@ classdef photron < handle
         file_bit_depth          {mustBeInteger}
         format                  {mustBeText}
     end
-    methods % Constructor
+    methods % Constructor & others
         function obj = photron(filepath)
             arguments 
                 filepath {mustBeText}
@@ -36,7 +36,6 @@ classdef photron < handle
             end
             obj.filepath = filepath;
             obj.get_header;
-%             assert((obj.file_bit_depth == 16) || (obj.file_bit_depth == 8))
         end
     end
     methods % Header parsing
@@ -107,10 +106,26 @@ classdef photron < handle
                 obj
                 frames {mustBeInteger}
             end
-            frames = arrayfun(@(x) obj.memmap.Data(x).image_data,frames(:),'UniformOutput',false);
+            the_memmap = obj.memmap;
+            frames = arrayfun(@(x) the_memmap.Data(x).image_data,frames(:),'UniformOutput',false);
         end
         function frames = readall(obj)
             frames = obj.read_frames(1:obj.total_frames);
+        end
+        function verify(obj,ax)
+            arguments
+                obj
+                ax matlab.graphics.axis.Axes
+            end
+            frames = obj.readall;
+            imshow(imadjust(frames{1}),'Parent',ax)
+            drawnow
+            pause(1)
+            for i=1:2:numel(frames)
+                imshow(imadjust(frames{i}),'Parent',ax)
+                pause(0.005)
+                drawnow
+            end
         end
         function imagedata = get.memmap(obj)
             arguments
@@ -121,6 +136,10 @@ classdef photron < handle
                     dtype = 'uint8';
                 case 16
                     dtype = 'uint16';
+                case 12
+                    dtype = 'ubit12';
+                otherwise
+                    error('Bit Depth Error.')
             end
             imagedata = memmapfile(obj.filepath, ...
                                    'Format',{dtype,flip(obj.resolution),'image_data'}, ...
