@@ -41,7 +41,7 @@ classdef wedge_shot
             % Show the top camera
             fig = figure();
             ax  = axes("Parent",fig);
-            obj.side_camera.verify(ax); % Side for now!!!!
+            obj.top_camera.verify(ax);
             close(fig)
             clearvars fig ax
             
@@ -76,8 +76,7 @@ classdef wedge_shot
                       "ForceSens C1", "ForceSens C2", "ForceSens C3", "ForceSens C4", ...
                       "CameraMon C1", "CameraMon C2", "CameraMon C3", "CameraMon C4", ...
                       "PDVTrcScp C1", "PDVTrcScp C2", "PDVTrcScp C3", "PDVTrcScp C4"];
-            arrayfun(@(x) title(nexttile(fig,x), labels(x)),[1:14])
-            
+            arrayfun(@(x) title(nexttile(fig,x), labels(x)),1:numel(labels))
         end
     end
     methods (Static)

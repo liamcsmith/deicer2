@@ -99,15 +99,47 @@ classdef photron < handle
                 obj
                 frame {mustBeInteger}
             end
-            frame = obj.memmap.Data(frame).image_data;
+            switch obj.file_bit_depth
+                case 8 || 16
+                    frame = obj.memmap.Data(frame).image_data;
+                case 12
+                    switch obj.effective_bit_side
+                        case 'Lower'
+                            byteorder = 'b'; % Big-endian
+                        otherwise
+                            byteorder = 'l'; % Little-endian
+                    end
+                    bit_loc = prod(obj.resolution) * 12 * (frame - 1);
+                    fid     = fopen(obj.filepath);
+                    
+                    fseek(fid, floor(bit_loc / 8), 'bof');
+                    frame = fread(fid, ...
+                                  flip(obj.resolution), ... % Shape of data
+                                  'ubit12=>uint16', ...     % Cast ubit12 to uint16
+                                  rem(bit_loc,8), ...       % Skip this many bits
+                                  byteorder);               % Use this byte order
+                    fclose(fid);
+            end
+            
         end
         function frames = read_frames(obj,frames)
             arguments
                 obj
                 frames {mustBeInteger}
             end
-            the_memmap = obj.memmap;
-            frames = arrayfun(@(x) the_memmap.Data(x).image_data,frames(:),'UniformOutput',false);
+            switch obj.file_bit_depth
+                case 8
+                    the_memmap = obj.memmap;
+                    frames = arrayfun(@(x) the_memmap.Data(x).image_data,frames(:),'UniformOutput',false);
+                case 16
+                    the_memmap = obj.memmap;
+                    frames = arrayfun(@(x) the_memmap.Data(x).image_data,frames(:),'UniformOutput',false);
+                case 12
+                    % Realistically should improve this as it can be done
+                    % without multiple fopen calls.
+                    frames = arrayfun(@(x) obj.read_frame(x),frames(:),'UniformOutput',false);
+            end
+            
         end
         function frames = readall(obj)
             frames = obj.read_frames(1:obj.total_frames);
@@ -136,8 +168,6 @@ classdef photron < handle
                     dtype = 'uint8';
                 case 16
                     dtype = 'uint16';
-                case 12
-                    dtype = 'ubit12';
                 otherwise
                     error('Bit Depth Error.')
             end
