@@ -7,6 +7,8 @@ classdef wedge_shot
         pdv_scope
         top_camera
         side_camera
+        side_png
+        top_png
     end
     
     methods
@@ -14,10 +16,13 @@ classdef wedge_shot
             arguments
                 shot_folder_path = ''
             end
+
             if ~isempty(shot_folder_path)
+
                 subfolders = dir(shot_folder_path);
                 subfolders = subfolders([subfolders(:).isdir]);
                 assert(numel(subfolders)>2)
+                
                 for i=3:numel(subfolders)
                     folder = subfolders(i);
                     fullpath = fullfile(folder.folder,folder.name);
@@ -34,11 +39,19 @@ classdef wedge_shot
                             obj.top_camera = photron(fullpath);
                         case 'side_raw'
                             obj.side_camera = photron(fullpath);
+                        case 'side_png'
+                            obj.side_png = imageDatastore(fullpath);
+                        case 'top_png'
+                            obj.top_png = imageDatastore(fullpath);
                     end
                 end
-                obj.verify
-            end
             
+                obj.verify
+            else 
+                folder_path = uigetdir('Select a location to spawn a shot directory');
+                folder_name = regexprep(string(datetime),["-"," ",":"],'_');
+                obj.build_folders(folder_path,folder_name);
+            end
         end
         function verify(obj)
             % Show the top camera

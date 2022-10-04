@@ -25,7 +25,7 @@ classdef photron < handle
         file_bit_depth          {mustBeInteger}
         format                  {mustBeText}
     end
-    methods % Constructor & others
+    methods % Constructor
         function obj = photron(filepath)
             arguments 
                 filepath {mustBeText}
@@ -39,7 +39,8 @@ classdef photron < handle
             obj.get_header;
         end
     end
-    methods % Header parsing
+    methods % Dependent properties 
+        % Header parsing
         function header_path = get.header_path(obj)
             header_path = regexprep(obj.filepath,".mraw",".cihx");
         end
@@ -102,22 +103,20 @@ classdef photron < handle
             end
         end
     end
-    methods % Image reading
-        function frame = read_frame(obj,frame)
+    methods % Class Methods
+        % Image reading
+        function frame     = read_frame(obj,frame)
             arguments
                 obj
                 frame {mustBeInteger}
             end
+            assert(any(ismember(obj.file_bit_depth,[8,12,16])))
             switch obj.file_bit_depth
-                case 8 || 16
+                case 8
+                    frame = obj.memmap.Data(frame).image_data;
+                case 16
                     frame = obj.memmap.Data(frame).image_data;
                 case 12
-                    switch obj.effective_bit_side
-                        case 'Lower'
-                            byteorder = 'b'; % Big-endian
-                        otherwise
-                            byteorder = 'l'; % Little-endian
-                    end
                     bit_loc = prod(obj.resolution) * 12 * (frame - 1);
                     fid     = fopen(obj.filepath);
                     
@@ -126,12 +125,12 @@ classdef photron < handle
                                   flip(obj.resolution), ... % Shape of data
                                   'ubit12=>uint16', ...     % Cast ubit12 to uint16
                                   rem(bit_loc,8), ...       % Skip this many bits
-                                  byteorder);               % Use this byte order
+                                  obj.byteorder);           % Use this byte order
                     fclose(fid);
             end
             
         end
-        function frames = read_frames(obj,frames)
+        function frames    = read_frames(obj,frames)
             arguments
                 obj
                 frames {mustBeInteger}
@@ -155,28 +154,10 @@ classdef photron < handle
                                           obj.byteorder);               % Use this byte order
                     end
                     fclose(fid);
-                    % Realistically should improve this as it can be done
-                    % without multiple fopen calls.
-                    % frames = arrayfun(@(x) obj.read_frame(x),frames(:),'UniformOutput',false);
             end 
         end
-        function frames = readall(obj)
+        function frames    = readall(obj)
             frames = obj.read_frames(1:obj.total_frames);
-        end
-        function verify(obj,ax)
-            arguments
-                obj
-                ax matlab.graphics.axis.Axes
-            end
-            frames = obj.readall;
-            imshow(imadjust(frames{1}),'Parent',ax)
-            drawnow
-            pause(1)
-            for i=1:2:numel(frames)
-                imshow(imadjust(frames{i}),'Parent',ax)
-                pause(0.005)
-                drawnow
-            end
         end
         function imagedata = get.memmap(obj)
             arguments
@@ -194,8 +175,25 @@ classdef photron < handle
                                    'Format',{dtype,flip(obj.resolution),'image_data'}, ...
                                    'Repeat',obj.total_frames);
         end
-    end
-    methods (Static) % XML Parser
+        
+        % Play video to prove it is ok
+        function verify(obj,ax)
+            arguments
+                obj
+                ax matlab.graphics.axis.Axes
+            end
+            frames = obj.readall;
+            imshow(imadjust(frames{1}),'Parent',ax)
+            drawnow
+            pause(1)
+            for i=1:2:numel(frames)
+                imshow(imadjust(frames{i}),'Parent',ax)
+                pause(0.005)
+                drawnow
+            end
+        end
+        end
+    methods (Static) % XML Parser for header ingest
         function out = read_element(element, TagNames)
             arguments
                 element  {mustBeA(element,"matlab.io.xml.dom.Node")}
