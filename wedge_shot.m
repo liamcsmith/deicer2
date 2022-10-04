@@ -12,30 +12,33 @@ classdef wedge_shot
     methods
         function obj = wedge_shot(shot_folder_path)
             arguments
-                shot_folder_path {mustBeFolder} = '/Users/liamsmith/Desktop/ds_test_01'
+                shot_folder_path = ''
             end
-            subfolders = dir(shot_folder_path);
-            subfolders = subfolders([subfolders(:).isdir]);
-            assert(numel(subfolders)>2)
-            for i=3:numel(subfolders)
-                folder = subfolders(i);
-                fullpath = fullfile(folder.folder,folder.name);
-                switch subfolders(i).name
-                    case 'camscope'
-                        obj.camera_monitor_scope = oscilloscope(fullpath);
-                    case 'fscope'
-                        obj.force_sensor_scope = oscilloscope(fullpath);
-                    case 'lgscope'
-                        obj.light_gate_scope = oscilloscope(fullpath);
-                    case 'pdvscope'
-                        obj.pdv_scope = oscilloscope(fullpath);
-                    case 'top_raw'
-                        obj.top_camera = photron(fullpath);
-                    case 'side_raw'
-                        obj.side_camera = photron(fullpath);
+            if ~isempty(shot_folder_path)
+                subfolders = dir(shot_folder_path);
+                subfolders = subfolders([subfolders(:).isdir]);
+                assert(numel(subfolders)>2)
+                for i=3:numel(subfolders)
+                    folder = subfolders(i);
+                    fullpath = fullfile(folder.folder,folder.name);
+                    switch subfolders(i).name
+                        case 'camscope'
+                            obj.camera_monitor_scope = oscilloscope(fullpath);
+                        case 'fscope'
+                            obj.force_sensor_scope = oscilloscope(fullpath);
+                        case 'lgscope'
+                            obj.light_gate_scope = oscilloscope(fullpath);
+                        case 'pdvscope'
+                            obj.pdv_scope = oscilloscope(fullpath);
+                        case 'top_raw'
+                            obj.top_camera = photron(fullpath);
+                        case 'side_raw'
+                            obj.side_camera = photron(fullpath);
+                    end
                 end
+                obj.verify
             end
-            obj.verify
+            
         end
         function verify(obj)
             % Show the top camera
