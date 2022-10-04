@@ -8,6 +8,7 @@ classdef photron < handle
     properties (Dependent,Access=private)
         header_path             {mustBeFile}
         memmap
+        byteorder
     end
     properties(Dependent)
         fps                     {mustBeInteger}
@@ -92,6 +93,14 @@ classdef photron < handle
         function resolution = get.resolution(obj)
             resolution = [obj.image_height, obj.image_width];
         end
+        function byteorder = get.byteorder(obj)
+            switch obj.effective_bit_side
+                case 'Lower'
+                    byteorder = 'b'; % Big-endian
+                otherwise
+                    byteorder = 'l'; % Little-endian
+            end
+        end
     end
     methods % Image reading
         function frame = read_frame(obj,frame)
@@ -135,11 +144,21 @@ classdef photron < handle
                     the_memmap = obj.memmap;
                     frames = arrayfun(@(x) the_memmap.Data(x).image_data,frames(:),'UniformOutput',false);
                 case 12
+                    bit_loc = prod(obj.resolution) * 12 * (frames - 1);
+                    frames = cell(size(bit_loc));
+                    fid     = fopen(obj.filepath);
+                    for i = 1:numel(bit_loc)
+                        fseek(fid, floor(bit_loc(i) / 8), 'bof');
+                        frames{i} = fread(fid,flip(obj.resolution), ... % Shape of data
+                                          'ubit12=>uint16', ...     % Cast ubit12 to uint16
+                                          rem(bit_loc(i),8), ...       % Skip this many bits
+                                          obj.byteorder);               % Use this byte order
+                    end
+                    fclose(fid);
                     % Realistically should improve this as it can be done
                     % without multiple fopen calls.
-                    frames = arrayfun(@(x) obj.read_frame(x),frames(:),'UniformOutput',false);
-            end
-            
+                    % frames = arrayfun(@(x) obj.read_frame(x),frames(:),'UniformOutput',false);
+            end 
         end
         function frames = readall(obj)
             frames = obj.read_frames(1:obj.total_frames);
